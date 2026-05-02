@@ -11,10 +11,7 @@ type Module struct {
 }
 
 func New(deps app.Deps) (app.Module, error) {
-	repo, err := newSQLiteRepository(deps.DB)
-	if err != nil {
-		return nil, err
-	}
+	repo := newInMemoryRepository()
 	uc := NewUseCase(repo, deps.IDGen, deps.Clock)
 	return &Module{handler: NewHandler(uc)}, nil
 }

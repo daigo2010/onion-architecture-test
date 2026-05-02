@@ -1,7 +1,6 @@
 package app
 
 import (
-	"database/sql"
 	"net/http"
 	"time"
 )
@@ -15,7 +14,6 @@ type Clock interface {
 }
 
 type Deps struct {
-	DB    *sql.DB
 	IDGen IDGenerator
 	Clock Clock
 }

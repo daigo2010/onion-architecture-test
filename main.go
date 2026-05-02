@@ -7,7 +7,6 @@ import (
 
 	"onion/internal/app"
 	"onion/internal/product"
-	"onion/internal/shared/sqlitedb"
 	"onion/internal/shared/system"
 	"onion/internal/user"
 )
@@ -19,18 +18,7 @@ var moduleFactories = []app.ModuleFactory{
 }
 
 func main() {
-	dsn := os.Getenv("DB_DSN")
-	if dsn == "" {
-		dsn = "app.db"
-	}
-	db, err := sqlitedb.Open(dsn)
-	if err != nil {
-		log.Fatalf("open db: %v", err)
-	}
-	defer db.Close()
-
 	deps := app.Deps{
-		DB:    db,
 		IDGen: system.IDGenerator{},
 		Clock: system.Clock{},
 	}
@@ -48,7 +36,7 @@ func main() {
 	if addr == "" {
 		addr = ":8080"
 	}
-	log.Printf("listening on %s (db=%s)", addr, dsn)
+	log.Printf("listening on %s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}
