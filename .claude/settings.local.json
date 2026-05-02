@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go version *)",
+      "PowerShell(go version)",
+      "PowerShell(@\\(\"C:\\\\Program Files\\\\Go\\\\bin\\\\go.exe\", \"C:\\\\Go\\\\bin\\\\go.exe\", \"$env:USERPROFILE\\\\go\\\\bin\\\\go.exe\", \"$env:LOCALAPPDATA\\\\Programs\\\\Go\\\\bin\\\\go.exe\"\\) | ForEach-Object { if \\(Test-Path $_\\) { & $_ version } })"
+    ]
+  }
+}
