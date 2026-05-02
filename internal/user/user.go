@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"net/mail"
 	"time"
@@ -9,6 +10,7 @@ import (
 var (
 	ErrEmptyName    = errors.New("name must not be empty")
 	ErrInvalidEmail = errors.New("email is invalid")
+	ErrNotFound     = errors.New("user not found")
 )
 
 type User struct {
@@ -19,7 +21,7 @@ type User struct {
 	UpdatedAt time.Time
 }
 
-func New(id, name, email string, now time.Time) (*User, error) {
+func newUser(id, name, email string, now time.Time) (*User, error) {
 	u := &User{ID: id, CreatedAt: now}
 	if err := u.apply(name, email, now); err != nil {
 		return nil, err
@@ -27,7 +29,7 @@ func New(id, name, email string, now time.Time) (*User, error) {
 	return u, nil
 }
 
-func (u *User) Update(name, email string, now time.Time) error {
+func (u *User) update(name, email string, now time.Time) error {
 	return u.apply(name, email, now)
 }
 
@@ -42,4 +44,11 @@ func (u *User) apply(name, email string, now time.Time) error {
 	u.Email = email
 	u.UpdatedAt = now
 	return nil
+}
+
+type Repository interface {
+	Save(ctx context.Context, u *User) error
+	FindByID(ctx context.Context, id string) (*User, error)
+	FindAll(ctx context.Context) ([]*User, error)
+	Delete(ctx context.Context, id string) error
 }

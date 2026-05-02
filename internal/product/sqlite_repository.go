@@ -1,15 +1,13 @@
-package persistence
+package product
 
 import (
 	"context"
 	"database/sql"
 	"errors"
 	"time"
-
-	"onion/domain/product"
 )
 
-const productSchema = `
+const sqliteSchema = `
 CREATE TABLE IF NOT EXISTS products (
     id         TEXT    PRIMARY KEY,
     name       TEXT    NOT NULL,
@@ -19,18 +17,18 @@ CREATE TABLE IF NOT EXISTS products (
     updated_at TEXT    NOT NULL
 );`
 
-type SQLiteProductRepository struct {
+type sqliteRepository struct {
 	db *sql.DB
 }
 
-func NewSQLiteProductRepository(db *sql.DB) (*SQLiteProductRepository, error) {
-	if _, err := db.Exec(productSchema); err != nil {
+func newSQLiteRepository(db *sql.DB) (*sqliteRepository, error) {
+	if _, err := db.Exec(sqliteSchema); err != nil {
 		return nil, err
 	}
-	return &SQLiteProductRepository{db: db}, nil
+	return &sqliteRepository{db: db}, nil
 }
 
-func (r *SQLiteProductRepository) Save(ctx context.Context, p *product.Product) error {
+func (r *sqliteRepository) Save(ctx context.Context, p *Product) error {
 	_, err := r.db.ExecContext(ctx, `
         INSERT INTO products (id, name, price, stock, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -46,19 +44,19 @@ func (r *SQLiteProductRepository) Save(ctx context.Context, p *product.Product) 
 	return err
 }
 
-func (r *SQLiteProductRepository) FindByID(ctx context.Context, id string) (*product.Product, error) {
+func (r *sqliteRepository) FindByID(ctx context.Context, id string) (*Product, error) {
 	row := r.db.QueryRowContext(ctx, `
         SELECT id, name, price, stock, created_at, updated_at
         FROM products WHERE id = ?
     `, id)
-	p, err := scanProduct(row.Scan)
+	p, err := scanRow(row.Scan)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, product.ErrNotFound
+		return nil, ErrNotFound
 	}
 	return p, err
 }
 
-func (r *SQLiteProductRepository) FindAll(ctx context.Context) ([]*product.Product, error) {
+func (r *sqliteRepository) FindAll(ctx context.Context) ([]*Product, error) {
 	rows, err := r.db.QueryContext(ctx, `
         SELECT id, name, price, stock, created_at, updated_at
         FROM products ORDER BY created_at ASC
@@ -68,9 +66,9 @@ func (r *SQLiteProductRepository) FindAll(ctx context.Context) ([]*product.Produ
 	}
 	defer rows.Close()
 
-	out := make([]*product.Product, 0)
+	out := make([]*Product, 0)
 	for rows.Next() {
-		p, err := scanProduct(rows.Scan)
+		p, err := scanRow(rows.Scan)
 		if err != nil {
 			return nil, err
 		}
@@ -79,7 +77,7 @@ func (r *SQLiteProductRepository) FindAll(ctx context.Context) ([]*product.Produ
 	return out, rows.Err()
 }
 
-func (r *SQLiteProductRepository) Delete(ctx context.Context, id string) error {
+func (r *sqliteRepository) Delete(ctx context.Context, id string) error {
 	res, err := r.db.ExecContext(ctx, `DELETE FROM products WHERE id = ?`, id)
 	if err != nil {
 		return err
@@ -89,14 +87,14 @@ func (r *SQLiteProductRepository) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	if n == 0 {
-		return product.ErrNotFound
+		return ErrNotFound
 	}
 	return nil
 }
 
-func scanProduct(scan func(...any) error) (*product.Product, error) {
+func scanRow(scan func(...any) error) (*Product, error) {
 	var (
-		p                       product.Product
+		p                    Product
 		createdAt, updatedAt string
 	)
 	if err := scan(&p.ID, &p.Name, &p.Price, &p.Stock, &createdAt, &updatedAt); err != nil {

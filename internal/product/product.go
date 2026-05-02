@@ -1,6 +1,7 @@
 package product
 
 import (
+	"context"
 	"errors"
 	"time"
 )
@@ -9,6 +10,7 @@ var (
 	ErrEmptyName     = errors.New("name must not be empty")
 	ErrNegativePrice = errors.New("price must be non-negative")
 	ErrNegativeStock = errors.New("stock must be non-negative")
+	ErrNotFound      = errors.New("product not found")
 )
 
 type Product struct {
@@ -20,7 +22,7 @@ type Product struct {
 	UpdatedAt time.Time
 }
 
-func New(id, name string, price, stock int, now time.Time) (*Product, error) {
+func newProduct(id, name string, price, stock int, now time.Time) (*Product, error) {
 	p := &Product{ID: id, CreatedAt: now}
 	if err := p.apply(name, price, stock, now); err != nil {
 		return nil, err
@@ -28,7 +30,7 @@ func New(id, name string, price, stock int, now time.Time) (*Product, error) {
 	return p, nil
 }
 
-func (p *Product) Update(name string, price, stock int, now time.Time) error {
+func (p *Product) update(name string, price, stock int, now time.Time) error {
 	return p.apply(name, price, stock, now)
 }
 
@@ -47,4 +49,11 @@ func (p *Product) apply(name string, price, stock int, now time.Time) error {
 	p.Stock = stock
 	p.UpdatedAt = now
 	return nil
+}
+
+type Repository interface {
+	Save(ctx context.Context, p *Product) error
+	FindByID(ctx context.Context, id string) (*Product, error)
+	FindAll(ctx context.Context) ([]*Product, error)
+	Delete(ctx context.Context, id string) error
 }

@@ -1,4 +1,4 @@
-package persistence
+package sqlitedb
 
 import (
 	"database/sql"
@@ -6,7 +6,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func OpenSQLite(dsn string) (*sql.DB, error) {
+func Open(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err

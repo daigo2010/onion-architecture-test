@@ -1,15 +1,13 @@
-package persistence
+package user
 
 import (
 	"context"
 	"database/sql"
 	"errors"
 	"time"
-
-	"onion/domain/user"
 )
 
-const userSchema = `
+const sqliteSchema = `
 CREATE TABLE IF NOT EXISTS users (
     id         TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
@@ -18,18 +16,18 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TEXT NOT NULL
 );`
 
-type SQLiteUserRepository struct {
+type sqliteRepository struct {
 	db *sql.DB
 }
 
-func NewSQLiteUserRepository(db *sql.DB) (*SQLiteUserRepository, error) {
-	if _, err := db.Exec(userSchema); err != nil {
+func newSQLiteRepository(db *sql.DB) (*sqliteRepository, error) {
+	if _, err := db.Exec(sqliteSchema); err != nil {
 		return nil, err
 	}
-	return &SQLiteUserRepository{db: db}, nil
+	return &sqliteRepository{db: db}, nil
 }
 
-func (r *SQLiteUserRepository) Save(ctx context.Context, u *user.User) error {
+func (r *sqliteRepository) Save(ctx context.Context, u *User) error {
 	_, err := r.db.ExecContext(ctx, `
         INSERT INTO users (id, name, email, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?)
@@ -44,19 +42,19 @@ func (r *SQLiteUserRepository) Save(ctx context.Context, u *user.User) error {
 	return err
 }
 
-func (r *SQLiteUserRepository) FindByID(ctx context.Context, id string) (*user.User, error) {
+func (r *sqliteRepository) FindByID(ctx context.Context, id string) (*User, error) {
 	row := r.db.QueryRowContext(ctx, `
         SELECT id, name, email, created_at, updated_at
         FROM users WHERE id = ?
     `, id)
-	u, err := scanUser(row.Scan)
+	u, err := scanRow(row.Scan)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, user.ErrNotFound
+		return nil, ErrNotFound
 	}
 	return u, err
 }
 
-func (r *SQLiteUserRepository) FindAll(ctx context.Context) ([]*user.User, error) {
+func (r *sqliteRepository) FindAll(ctx context.Context) ([]*User, error) {
 	rows, err := r.db.QueryContext(ctx, `
         SELECT id, name, email, created_at, updated_at
         FROM users ORDER BY created_at ASC
@@ -66,9 +64,9 @@ func (r *SQLiteUserRepository) FindAll(ctx context.Context) ([]*user.User, error
 	}
 	defer rows.Close()
 
-	out := make([]*user.User, 0)
+	out := make([]*User, 0)
 	for rows.Next() {
-		u, err := scanUser(rows.Scan)
+		u, err := scanRow(rows.Scan)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +75,7 @@ func (r *SQLiteUserRepository) FindAll(ctx context.Context) ([]*user.User, error
 	return out, rows.Err()
 }
 
-func (r *SQLiteUserRepository) Delete(ctx context.Context, id string) error {
+func (r *sqliteRepository) Delete(ctx context.Context, id string) error {
 	res, err := r.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
 	if err != nil {
 		return err
@@ -87,14 +85,14 @@ func (r *SQLiteUserRepository) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	if n == 0 {
-		return user.ErrNotFound
+		return ErrNotFound
 	}
 	return nil
 }
 
-func scanUser(scan func(...any) error) (*user.User, error) {
+func scanRow(scan func(...any) error) (*User, error) {
 	var (
-		u                    user.User
+		u                    User
 		createdAt, updatedAt string
 	)
 	if err := scan(&u.ID, &u.Name, &u.Email, &createdAt, &updatedAt); err != nil {
