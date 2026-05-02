@@ -15,17 +15,33 @@ import (
 func main() {
 	dsn := os.Getenv("DB_DSN")
 	if dsn == "" {
-		dsn = "products.db"
+		dsn = "app.db"
 	}
-	repo, err := persistence.NewSQLiteProductRepository(dsn)
+	db, err := persistence.OpenSQLite(dsn)
 	if err != nil {
 		log.Fatalf("open db: %v", err)
 	}
-	defer repo.Close()
+	defer db.Close()
 
-	uc := usecase.NewProductUseCase(repo, system.RandomIDGenerator{}, system.SystemClock{})
-	h := handler.NewProductHandler(uc)
-	r := router.New(h)
+	productRepo, err := persistence.NewSQLiteProductRepository(db)
+	if err != nil {
+		log.Fatalf("init product repo: %v", err)
+	}
+	userRepo, err := persistence.NewSQLiteUserRepository(db)
+	if err != nil {
+		log.Fatalf("init user repo: %v", err)
+	}
+
+	idGen := system.RandomIDGenerator{}
+	clock := system.SystemClock{}
+
+	productUC := usecase.NewProductUseCase(productRepo, idGen, clock)
+	userUC := usecase.NewUserUseCase(userRepo, idGen, clock)
+
+	r := router.New(
+		handler.NewProductHandler(productUC),
+		handler.NewUserHandler(userUC),
+	)
 
 	addr := os.Getenv("ADDR")
 	if addr == "" {

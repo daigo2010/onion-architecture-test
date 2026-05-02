@@ -7,11 +7,9 @@ import (
 	"time"
 
 	"onion/domain/product"
-
-	_ "modernc.org/sqlite"
 )
 
-const schema = `
+const productSchema = `
 CREATE TABLE IF NOT EXISTS products (
     id         TEXT    PRIMARY KEY,
     name       TEXT    NOT NULL,
@@ -25,19 +23,12 @@ type SQLiteProductRepository struct {
 	db *sql.DB
 }
 
-func NewSQLiteProductRepository(dsn string) (*SQLiteProductRepository, error) {
-	db, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := db.Exec(schema); err != nil {
-		_ = db.Close()
+func NewSQLiteProductRepository(db *sql.DB) (*SQLiteProductRepository, error) {
+	if _, err := db.Exec(productSchema); err != nil {
 		return nil, err
 	}
 	return &SQLiteProductRepository{db: db}, nil
 }
-
-func (r *SQLiteProductRepository) Close() error { return r.db.Close() }
 
 func (r *SQLiteProductRepository) Save(ctx context.Context, p *product.Product) error {
 	_, err := r.db.ExecContext(ctx, `
